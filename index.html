@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Matter.js 物理引擎示例</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        #info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            font-family: Arial;
+            font-size: 14px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">物體數量: 0 | FPS: 0</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.18.0/matter.min.js"></script>
+    <script>
+        const Engine = Matter.Engine,
+            Render = Matter.Render,
+            World = Matter.World,
+            Bodies = Matter.Bodies,
+            Mouse = Matter.Mouse,
+            MouseConstraint = Matter.MouseConstraint;
+
+        const engine = Engine.create();
+        const render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: window.innerWidth,
+                height: window.innerHeight,
+                wireframes: false,
+                background: '#f0f0f0'
+            }
+        });
+
+        // 創建滑鼠控制
+        const mouse = Mouse.create(render.canvas);
+        const mouseConstraint = MouseConstraint.create(engine, {
+            mouse: mouse,
+            constraint: {
+                stiffness: 0.2,
+                render: {
+                    visible: false
+                }
+            }
+        });
+
+        World.add(engine.world, mouseConstraint);
+        render.mouse = mouse;
+
+        // 創建邊界
+        const ground = Bodies.rectangle(window.innerWidth/2, window.innerHeight, window.innerWidth, 60, { isStatic: true });
+        const leftWall = Bodies.rectangle(0, window.innerHeight/2, 60, window.innerHeight, { isStatic: true });
+        const rightWall = Bodies.rectangle(window.innerWidth, window.innerHeight/2, 60, window.innerHeight, { isStatic: true });
+        const ceiling = Bodies.rectangle(window.innerWidth/2, 0, window.innerWidth, 60, { isStatic: true });
+
+        World.add(engine.world, [ground, leftWall, rightWall, ceiling]);
+
+        Engine.run(engine);
+        Render.run(render);
+
+        let isMouseDown = false;
+        let interval;
+        let lastTime = performance.now();
+        let frames = 0;
+        let fps = 0;
+
+        // 生成隨顏色
+        function getRandomColor() {
+            return '#' + Math.floor(Math.random()*16777215).toString(16);
+        }
+
+        // 在 script 開始處添加角落生物圖片數組
+        const characterImages = [
+            'https://example.com/sumikko1.png', // 替換為實際的角落生物圖片URL
+            'https://example.com/sumikko2.png',
+            'https://example.com/sumikko3.png',
+            'https://example.com/sumikko4.png',
+            'https://example.com/sumikko5.png'
+        ];
+
+        // 修改 createRandomBody 函數
+        function createRandomBody(x, y) {
+            const size = 40; // 物理碰撞箱的大小
+            const imageIndex = Math.floor(Math.random() * characterImages.length);
+            
+            return Bodies.rectangle(x, y, size, size, {
+                render: {
+                    sprite: {
+                        texture: characterImages[imageIndex],
+                        xScale: 0.001, // 將圖片縮小到原始大小的 20%
+                        yScale: 0.001  // 將圖片縮小到原始大小的 20%
+                    }
+                }
+            });
+        }
+
+        // 更新信息顯示
+        function updateInfo() {
+            const currentTime = performance.now();
+            frames++;
+            
+            if (currentTime - lastTime >= 1000) {
+                fps = frames;
+                frames = 0;
+                lastTime = currentTime;
+            }
+
+            document.getElementById('info').textContent = 
+                `物體數量: ${engine.world.bodies.length - 4} | FPS: ${fps}`;
+            
+            requestAnimationFrame(updateInfo);
+        }
+        updateInfo();
+
+        // 滑鼠事件處理
+        document.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // 左鍵
+                isMouseDown = true;
+                interval = setInterval(() => {
+                    const body = createRandomBody(e.clientX, e.clientY);
+                    World.add(engine.world, body);
+                }, 100); // 每0.1秒生成一個物體（即每秒10個）
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            clearInterval(interval);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isMouseDown) {
+                const body = createRandomBody(e.clientX, e.clientY);
+                World.add(engine.world, body);
+            }
+        });
+    </script>
+</body>
+</html>
